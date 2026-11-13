@@ -1,0 +1,208 @@
+from pathlib import Path
+
+html = r'''<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0f">
+<title>VOID — Dungeon Duel</title>
+<style>
+:root{--bg:#0b0b0f;--panel:#14141a;--line:#292932;--muted:#858591;--white:#f4f3f7;--purple:#9565ff;--purple2:#b69aff}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--white);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;touch-action:none}
+button{font:inherit;color:inherit;border:1px solid var(--line);background:#191920;border-radius:10px;padding:10px 14px;cursor:pointer}
+button:active{transform:scale(.97)}button.primary{background:var(--purple);border-color:var(--purple);color:#fff;font-weight:750}
+#app{height:100%;display:flex;flex-direction:column;max-width:1400px;margin:auto;padding:clamp(10px,2vw,22px);gap:12px}
+header{height:42px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{font-weight:900;letter-spacing:.34em;font-size:17px}.logo span{color:var(--purple)}
+.meta{font-size:10px;color:var(--muted);letter-spacing:.15em}
+main{min-height:0;flex:1;display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:12px}
+.stage{position:relative;min-height:0;background:#101015;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.hud{position:absolute;left:14px;right:14px;top:12px;display:flex;justify-content:space-between;pointer-events:none;gap:8px}
+.hudgroup{display:flex;gap:8px;align-items:center}.chip{background:#0b0b0fdd;border:1px solid #34343e;border-radius:8px;padding:7px 10px;font-size:11px;color:#ddd;backdrop-filter:blur(8px)}.chip b{color:var(--purple2)}
+.sidebar{display:flex;flex-direction:column;gap:10px;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px}
+.card h3{margin:0 0 10px;font-size:10px;letter-spacing:.18em;color:var(--muted);font-weight:700}
+.statrow{display:flex;justify-content:space-between;font-size:12px;margin:8px 0}.statrow strong{font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:8px;background:#292932;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--purple);width:100%;transition:width .15s}
+#skills{display:grid;grid-template-columns:1fr 1fr;gap:7px}.skill{font-size:11px;text-align:left;padding:9px 8px}.skill b{display:block;font-size:10px;color:var(--purple2);margin-bottom:3px}.skill small{color:var(--muted)}
+#log{font-size:11px;line-height:1.6;color:#aaa;min-height:70px}
+.bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-shrink:0}.hint{font-size:10px;color:var(--muted);line-height:1.5}
+.overlay{position:absolute;inset:0;background:#09090deF;display:flex;align-items:center;justify-content:center;padding:20px;z-index:5}
+.modal{width:min(440px,100%);background:#131319;border:1px solid #353541;border-radius:18px;padding:26px;text-align:center;box-shadow:0 20px 80px #0009}
+.modal .eyebrow{font-size:10px;letter-spacing:.24em;color:var(--purple2);font-weight:800}.modal h1{font-size:clamp(38px,8vw,64px);letter-spacing:.25em;margin:10px 0 4px}.modal p{color:#aaa;font-size:13px;line-height:1.7}.modal .actions{display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+#touch{display:none;position:absolute;inset:0;pointer-events:none}
+.joy{position:absolute;left:18px;bottom:18px;width:116px;height:116px;border-radius:50%;border:1px solid #7773;background:#16161c99;pointer-events:auto;touch-action:none}
+.knob{position:absolute;width:42px;height:42px;border-radius:50%;background:#9565ffbb;border:1px solid #c5aaff;left:36px;top:36px}
+.touch-actions{position:absolute;right:16px;bottom:18px;display:grid;grid-template-columns:repeat(2,58px);gap:8px;pointer-events:auto}
+.touch-actions button{height:54px;padding:4px;background:#17171ddd;border-color:#8c70c7;font-size:10px;font-weight:800;touch-action:none}
+.touch-actions button em{display:block;color:var(--purple2);font-style:normal;font-size:9px;margin-top:2px}
+@media(max-width:760px){
+ #app{padding:9px;gap:8px}header{height:30px}.meta{font-size:8px}
+ main{display:flex;flex-direction:column;gap:8px}
+ .stage{flex:1;min-height:240px}
+ .sidebar{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+ .card{padding:9px}.card h3{margin-bottom:6px;font-size:9px}
+ #log{min-height:32px;font-size:10px}.stats-card .statrow{font-size:10px;margin:5px 0}
+ #skills{gap:5px}.skill{padding:6px;font-size:10px}
+ .bottom{display:none}#touch{display:block}
+}
+@media(max-height:650px) and (max-width:760px){.sidebar .log-card{display:none}.sidebar{grid-template-columns:1fr 1fr}.stage{min-height:190px}}
+</style>
+</head>
+<body>
+<div id="app">
+<header><div class="logo">V<span>O</span>ID</div><div class="meta">DUNGEON DUEL&nbsp; / &nbsp;PROTOTYPE 001</div></header>
+<main>
+<section class="stage" id="stage">
+<canvas id="game"></canvas>
+<div class="hud">
+ <div class="hudgroup"><div class="chip">FLOOR <b id="floor">01</b></div><div class="chip">ROOM <b id="room">01</b></div></div>
+ <div class="hudgroup"><div class="chip">YOU <b id="youTime">00:00</b></div><div class="chip">CPU <b id="cpuTime">--:--</b></div></div>
+</div>
+<div id="touch">
+ <div class="joy" id="joy"><div class="knob" id="knob"></div></div>
+ <div class="touch-actions">
+  <button data-act="attack">ATK<em>通常攻撃</em></button>
+  <button data-act="dash">DASH<em>回避</em></button>
+  <button data-act="shock">Q<em>衝撃波</em></button>
+  <button data-act="blink">E<em>瞬間移動</em></button>
+ </div>
+</div>
+<div class="overlay" id="overlay">
+ <div class="modal">
+  <div class="eyebrow">PROCEDURAL ACTION ROGUELIKE</div>
+  <h1>VOID</h1>
+  <div class="eyebrow">ENTER THE UNKNOWN.</div>
+  <p>ランダム生成されたダンジョンを攻略し、最深部のボスを倒せ。CPUと同じ構造の迷宮でクリアタイムを競う。</p>
+  <div class="actions"><button class="primary" id="start">START RUN</button><button id="how">HOW TO PLAY</button></div>
+  <p id="modalNote" style="font-size:10px;margin-bottom:0">PC: WASD / 矢印キー・Space・クリック　｜　スマホ: 左スティック・右ボタン</p>
+ </div>
+</div>
+</section>
+<aside class="sidebar">
+ <div class="card stats-card">
+  <h3>PLAYER STATUS</h3>
+  <div class="statrow"><span>HP</span><strong id="hpText">100 / 100</strong></div><div class="bar"><i id="hpBar"></i></div>
+  <div class="statrow"><span>LEVEL</span><strong id="level">01</strong></div>
+  <div class="statrow"><span>SHARDS</span><strong id="shards">0</strong></div>
+  <div class="statrow"><span>ENEMIES</span><strong id="enemyCount">0</strong></div>
+ </div>
+ <div class="card">
+  <h3>ABILITIES</h3>
+  <div id="skills">
+   <button class="skill" id="attackBtn"><b>ATK / CLICK</b>通常攻撃<small>近距離攻撃</small></button>
+   <button class="skill" id="dashBtn"><b>SPACE</b>ダッシュ<small>CD 1.2 sec</small></button>
+   <button class="skill" id="shockBtn"><b>Q</b>衝撃波<small>CD 5 sec</small></button>
+   <button class="skill" id="blinkBtn"><b>E</b>ブリンク<small>CD 7 sec</small></button>
+  </div>
+ </div>
+ <div class="card log-card" style="flex:1;min-height:90px">
+  <h3>FIELD LOG</h3><div id="log">迷宮の入口を検出。RUNを開始してください。</div>
+ </div>
+</aside>
+</main>
+<div class="bottom"><div class="hint">WASD / ARROWS 移動　·　CLICK 攻撃　·　SPACE 回避　·　Q 衝撃波　·　E ブリンク</div><div class="hint">VOID SYSTEMS <span style="color:var(--purple)">●</span> SEED-BASED DUNGEON</div></div>
+</div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),stage=document.getElementById('stage');
+const $=id=>document.getElementById(id);
+let W=800,H=600,run=false,ended=false,last=0,startAt=0,elapsed=0,seed=0,floor=1,roomNo=1,level=1,shards=0,hp=100,maxHp=100;
+let map=[],rooms=[],player={},enemies=[],particles=[],projectiles=[],keys={},pointer={x:0,y:0,down:false},cool={attack:0,dash:0,shock:0,blink:0},cpu={progress:0,time:0,done:false};
+const TILE=32, COLS=31, ROWS=23;
+function resize(){let r=stage.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);W=Math.max(320,r.width);H=Math.max(240,r.height);canvas.width=Math.floor(W*d);canvas.height=Math.floor(H*d);ctx.setTransform(d,0,0,d,0,0)}
+new ResizeObserver(resize).observe(stage);resize();
+function rngFactory(s){return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
+let rand=Math.random;
+function generate(){
+ rand=rngFactory(seed+floor*7919);map=Array.from({length:ROWS},()=>Array(COLS).fill(1));rooms=[];
+ // Place non-overlapping rooms, connect each to previous via L-shaped corridors.
+ for(let i=0;i<12;i++){let w=randInt(5,8),h=randInt(4,6),x=randInt(1,COLS-w-1),y=randInt(1,ROWS-h-1);
+  if(rooms.some(r=>x<r.x+r.w+1&&x+w+1>r.x&&y<r.y+r.h+1&&y+h+1>r.y))continue;
+  let room={x,y,w,h,cx:Math.floor(x+w/2),cy:Math.floor(y+h/2)};rooms.push(room);
+  for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)map[yy][xx]=0;
+  if(rooms.length>1){let p=rooms[rooms.length-2],cx=room.cx,cy=room.cy;
+   if(rand()<.5){for(let xx=Math.min(p.cx,cx);xx<=Math.max(p.cx,cx);xx++)map[p.cy][xx]=0;for(let yy=Math.min(p.cy,cy);yy<=Math.max(p.cy,cy);yy++)map[yy][cx]=0}
+   else{for(let yy=Math.min(p.cy,cy);yy<=Math.max(p.cy,cy);yy++)map[yy][p.cx]=0;for(let xx=Math.min(p.cx,cx);xx<=Math.max(p.cx,cx);xx++)map[cy][xx]=0}
+  }
+ }
+ if(rooms.length<2){rooms=[{x:2,y:2,w:7,h:6,cx:5,cy:5},{x:20,y:14,w:7,h:6,cx:23,cy:17}];for(let r of rooms)for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)map[y][x]=0;for(let x=5;x<=23;x++)map[5][x]=0;for(let y=5;y<=17;y++)map[y][23]=0}
+ let start=rooms[0],boss=rooms[rooms.length-1];player={x:(start.cx+.5)*TILE,y:(start.cy+.5)*TILE,r:10,dx:1,dy:0,inv:0};
+ exit={x:(boss.cx+.5)*TILE,y:(boss.cy+.5)*TILE};
+ enemies=[];for(let i=1;i<rooms.length;i++){let r=rooms[i];let count=i===rooms.length-1?1:randInt(1,3);for(let n=0;n<count;n++){let x=(randInt(r.x+1,r.x+r.w-1)+.5)*TILE,y=(randInt(r.y+1,r.y+r.h-1)+.5)*TILE;enemies.push({x,y,hp:i===rooms.length-1?75:30,max:i===rooms.length-1?75:30,r:i===rooms.length-1?14:10,speed:i===rooms.length-1?42:34,boss:i===rooms.length-1,hit:0,attack:rand()*2})}}
+ // deterministic loot
+ loot=[];for(let i=1;i<rooms.length-1;i++)if(rand()<.75){let r=rooms[i];loot.push({x:(r.cx+.5)*TILE,y:(r.cy+.5)*TILE,taken:false})}
+ roomNo=1;updateHUD();log('新しい迷宮を生成。出口反応を最深部で検出。');
+}
+let exit={x:0,y:0},loot=[];
+function randInt(a,b){return Math.floor(rand()*(b-a+1))+a}
+function log(s){$('log').textContent=s}
+function wallAt(x,y){let tx=Math.floor(x/TILE),ty=Math.floor(y/TILE);return !map[ty]||map[ty][tx]!==0}
+function moveEntity(e,dx,dy){let nx=e.x+dx,ny=e.y+dy;if(!wallAt(nx+Math.sign(dx)*e.r*.7,e.y)&&!wallAt(nx,e.y+Math.sign(dy)*e.r*.7))e.x=nx;if(!wallAt(e.x+Math.sign(dx)*e.r*.7,ny)&&!wallAt(e.x,ny+Math.sign(dy)*e.r*.7))e.y=ny}
+function burst(x,y,color,n=8){for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,s=25+Math.random()*100;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.35+Math.random()*.35,color})}}
+function attack(){if(!run||cool.attack>0)return;cool.attack=.34;let hit=0;for(let e of enemies){let dx=e.x-player.x,dy=e.y-player.y,d=Math.hypot(dx,dy);if(d<48){e.hp-=25;e.hit=.15;burst(e.x,e.y,'#a987ff',5);hit++}}if(hit)log('斬撃命中。敵にダメージ。')}
+function dash(){if(!run||cool.dash>0)return;cool.dash=1.2;player.inv=.28;let dx=player.dx||1,dy=player.dy||0;for(let i=0;i<9;i++)moveEntity(player,dx*7,dy*7);burst(player.x,player.y,'#9565ff',10)}
+function shock(){if(!run||cool.shock>0)return;cool.shock=5;for(let e of enemies)if(Math.hypot(e.x-player.x,e.y-player.y)<115){e.hp-=38;e.hit=.2;burst(e.x,e.y,'#b69aff',9)}burst(player.x,player.y,'#9565ff',24);log('SHOCKWAVE 発動。周囲を一掃！')}
+function blink(){if(!run||cool.blink>0)return;cool.blink=7;let dx=player.dx||1,dy=player.dy||0;for(let i=0;i<12;i++){let nx=player.x+dx*12,ny=player.y+dy*12;if(wallAt(nx,ny))break;player.x=nx;player.y=ny}player.inv=.25;burst(player.x,player.y,'#9565ff',14)}
+function update(dt){
+ elapsed=(performance.now()-startAt)/1000;
+ for(let k in cool)cool[k]=Math.max(0,cool[k]-dt);
+ player.inv=Math.max(0,player.inv-dt);
+ let dx=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0),dy=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0);
+ if(touchVec.x||touchVec.y){dx=touchVec.x;dy=touchVec.y}
+ let l=Math.hypot(dx,dy);if(l){dx/=l;dy/=l;player.dx=dx;player.dy=dy;moveEntity(player,dx*145*dt,dy*145*dt)}
+ for(let e of enemies){e.attack-=dt;e.hit=Math.max(0,e.hit-dt);let vx=player.x-e.x,vy=player.y-e.y,d=Math.hypot(vx,vy);if(d<190&&d>2){moveEntity(e,vx/d*e.speed*dt,vy/d*e.speed*dt)}if(d<e.r+player.r+3&&e.attack<=0&&player.inv<=0){hp-=e.boss?13:7;e.attack=e.boss?.8:1.1;player.inv=.35;burst(player.x,player.y,'#ffffff',5);log('被弾！距離を取って回避しよう。')}}
+ enemies=enemies.filter(e=>{if(e.hp<=0){shards+=e.boss?5:1;burst(e.x,e.y,'#9565ff',12);if(e.boss){log('BOSS DOWN. 出口が開いた！');bossDefeated=true}return false}return true});
+ for(let l of loot)if(!l.taken&&Math.hypot(l.x-player.x,l.y-player.y)<22){l.taken=true;shards+=3;hp=Math.min(maxHp,hp+12);log('SHARD獲得。HPを少し回復。')}
+ if(hp<=0){hp=0;finish(false)}
+ if(bossDefeated&&Math.hypot(exit.x-player.x,exit.y-player.y)<25)finish(true);
+ // CPU race progress: deterministic simulated rival, tuned to be beatable and visibly advancing.
+ if(!cpu.done){cpu.progress=Math.min(1,cpu.progress+dt/(88+((seed%17)-8)*1.1));if(cpu.progress>=1){cpu.done=true;cpu.time=elapsed+Math.max(0,Math.random()*2)}}
+ particles=particles.filter(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.94;p.vy*=.94;p.life-=dt;return p.life>0});
+ updateHUD();
+}
+let bossDefeated=false;
+function finish(win){if(ended)return;ended=true;run=false;let you=elapsed,cpuT=cpu.time||94,won=win&&(!cpu.done||you<cpuT);$('overlay').style.display='flex';$('overlay').innerHTML=`<div class="modal"><div class="eyebrow">RUN COMPLETE</div><h1 style="font-size:42px;letter-spacing:.16em;color:${won?'#b69aff':'#eee'}">${win?(won?'VICTORY':'CLEAR'):'DEFEAT'}</h1><p>${win?'ボスを撃破し、ダンジョンから脱出した。':'探索はここで終了。次のランでリベンジしよう。'}</p><div style="display:flex;justify-content:space-around;margin:20px 0"><div><div class="eyebrow">YOUR TIME</div><strong>${fmt(you)}</strong></div><div><div class="eyebrow">CPU STATUS</div><strong>${cpu.done?fmt(cpuT):'RUNNING'}</strong></div></div><div class="actions"><button class="primary" id="again">RUN AGAIN</button></div></div>`;$('again').onclick=()=>newRun()}
+function fmt(t){return String(Math.floor(t/60)).padStart(2,'0')+':'+String(Math.floor(t%60)).padStart(2,'0')}
+function updateHUD(){$('hpText').textContent=`${Math.ceil(hp)} / ${maxHp}`;$('hpBar').style.width=(hp/maxHp*100)+'%';$('level').textContent=String(level).padStart(2,'0');$('shards').textContent=shards;$('enemyCount').textContent=enemies.length;$('floor').textContent=String(floor).padStart(2,'0');$('room').textContent=String(roomNo).padStart(2,'0');$('youTime').textContent=fmt(elapsed);$('cpuTime').textContent=cpu.done?fmt(cpu.time):Math.round(cpu.progress*100)+'%'}
+function draw(){
+ ctx.clearRect(0,0,W,H);let scale=Math.min(W/(COLS*TILE),H/(ROWS*TILE)),vw=COLS*TILE*scale,vh=ROWS*TILE*scale,ox=(W-vw)/2,oy=(H-vh)/2;
+ ctx.save();ctx.translate(ox,oy);ctx.scale(scale,scale);
+ // restrained floor grid
+ for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){let px=x*TILE,py=y*TILE;if(map[y]?.[x]===0){ctx.fillStyle=((x+y)%2)?'#17171d':'#15151b';ctx.fillRect(px,py,TILE,TILE);ctx.strokeStyle='#22222a';ctx.lineWidth=.6;ctx.strokeRect(px,py,TILE,TILE)}else{ctx.fillStyle='#0b0b10';ctx.fillRect(px,py,TILE,TILE);ctx.fillStyle='#22222a';ctx.fillRect(px,py,TILE,2);ctx.fillRect(px,py,2,TILE)}}
+ // exit
+ ctx.strokeStyle=bossDefeated?'#a987ff':'#46404f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(exit.x,exit.y,15,0,Math.PI*2);ctx.stroke();ctx.fillStyle=bossDefeated?'#9565ff':'#302b39';ctx.beginPath();ctx.arc(exit.x,exit.y,5,0,Math.PI*2);ctx.fill();
+ for(let l of loot)if(!l.taken){ctx.save();ctx.translate(l.x,l.y);ctx.rotate(Math.PI/4);ctx.fillStyle='#b69aff';ctx.fillRect(-6,-6,12,12);ctx.restore()}
+ for(let e of enemies){ctx.fillStyle=e.hit>0?'#fff':(e.boss?'#9a69ff':'#d8d5df');ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle=e.boss?'#d0baff':'#555';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#0b0b0f';ctx.fillRect(e.x-12,e.y-e.r-9,24,3);ctx.fillStyle='#9565ff';ctx.fillRect(e.x-12,e.y-e.r-9,24*Math.max(0,e.hp/e.max),3)}
+ for(let p of particles){ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.color;ctx.fillRect(p.x-2,p.y-2,4,4)}ctx.globalAlpha=1;
+ // player glyph
+ ctx.save();ctx.translate(player.x,player.y);ctx.rotate(Math.atan2(player.dy,player.dx));ctx.fillStyle=player.inv>0?'#fff':'#a987ff';ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(-9,-9);ctx.lineTo(-5,0);ctx.lineTo(-9,9);ctx.closePath();ctx.fill();ctx.strokeStyle='#e6dcff';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+ ctx.restore();
+ // vignette
+ let g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.2,W/2,H/2,Math.max(W,H)*.7);g.addColorStop(0,'transparent');g.addColorStop(1,'#05050988');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+}
+function frame(t){let dt=Math.min(.04,(t-last)/1000||0);last=t;if(run)update(dt);draw();requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+function newRun(){seed=Math.floor(Math.random()*999999);floor=1;level=1;shards=0;hp=100;bossDefeated=false;ended=false;elapsed=0;cpu={progress:0,time:0,done:false};generate();startAt=performance.now();run=true;$('overlay').style.display='none'}
+$('start').onclick=newRun;
+$('how').onclick=()=>{$('modalNote').textContent='敵を倒してSHARDを集め、宝箱で回復。最後の部屋の紫のボスを倒し、出口へ到達するとクリア。CPUは同じ迷宮を別ルートで攻略します。';};
+window.addEventListener('keydown',e=>{keys[e.key]=true;if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();if(e.key===' ')dash();if(e.key.toLowerCase()==='q')shock();if(e.key.toLowerCase()==='e')blink();if(e.key==='Enter'&&!run)newRun()});
+window.addEventListener('keyup',e=>keys[e.key]=false);
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&run){attack()}});
+$('attackBtn').onclick=attack;$('dashBtn').onclick=dash;$('shockBtn').onclick=shock;$('blinkBtn').onclick=blink;
+document.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();({attack,dash,shock,blink})[b.dataset.act]()}));
+let touchVec={x:0,y:0},joy=$('joy'),knob=$('knob'),joyId=null;
+joy.addEventListener('pointerdown',e=>{joyId=e.pointerId;joy.setPointerCapture(joyId);joyMove(e)});
+joy.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e)});
+function joyMove(e){let r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,m=Math.hypot(dx,dy),max=37;if(m>max){dx=dx/m*max;dy=dy/m*max}touchVec={x:dx/max,y:dy/max};knob.style.transform=`translate(${dx}px,${dy}px)`}
+function joyEnd(){joyId=null;touchVec={x:0,y:0};knob.style.transform='translate(0,0)'}
+joy.addEventListener('pointerup',joyEnd);joy.addEventListener('pointercancel',joyEnd);
+})();
+</script>
+</body>
+</html>'''
+path = Path("/mnt/data/void_dungeon_duel.html")
+path.write_text(html, encoding="utf-8")
+print(f"Created {path} ({path.stat().st_size:,} bytes)")

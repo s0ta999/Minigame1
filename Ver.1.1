@@ -1,0 +1,1000 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0f">
+<title>VOID — Dungeon Duel 3D</title>
+<style>
+:root{
+  --bg:#0b0b0f;--panel:#14141a;--line:#292932;--muted:#858591;--white:#f4f3f7;
+  --purple:#9565ff;--purple2:#b69aff;
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:var(--white);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;touch-action:none}
+button{font:inherit;color:inherit;border:1px solid var(--line);background:#191920;border-radius:10px;padding:10px 14px;cursor:pointer;touch-action:manipulation}
+button:active{transform:scale(.96)}
+button.primary{background:var(--purple);border-color:var(--purple);color:#fff;font-weight:750}
+#app{
+  height:100%;display:flex;flex-direction:column;max-width:1440px;margin:auto;
+  padding:calc(10px + var(--sat)) calc(12px + var(--sar)) calc(10px + var(--sab)) calc(12px + var(--sal));
+  gap:10px;
+}
+header{height:38px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{font-weight:900;letter-spacing:.34em;font-size:17px}.logo span{color:var(--purple)}
+.meta{font-size:10px;color:var(--muted);letter-spacing:.15em}
+main{min-height:0;flex:1;display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:12px}
+.stage{position:relative;min-height:0;background:#0d0d12;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:12px;right:12px;top:12px;display:flex;justify-content:space-between;pointer-events:none;gap:8px;flex-wrap:wrap;z-index:2}
+.hudgroup{display:flex;gap:6px;align-items:center}
+.chip{background:#0b0b0fd9;border:1px solid #34343e;border-radius:8px;padding:6px 10px;font-size:11px;color:#ddd;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.chip b{color:var(--purple2)}
+.sidebar{display:flex;flex-direction:column;gap:10px;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px}
+.card h3{margin:0 0 8px;font-size:10px;letter-spacing:.18em;color:var(--muted);font-weight:700}
+.statrow{display:flex;justify-content:space-between;font-size:12px;margin:6px 0}.statrow strong{font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:8px;background:#292932;overflow:hidden;margin-top:4px}.bar i{display:block;height:100%;background:var(--purple);width:100%;transition:width .15s}
+#skills{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.skill{font-size:11px;text-align:left;padding:9px 8px;position:relative;overflow:hidden}
+.skill b{display:block;font-size:10px;color:var(--purple2);margin-bottom:2px}
+.skill small{color:var(--muted);font-size:10px}
+.skill.cd{opacity:.55}
+#log{font-size:11px;line-height:1.55;color:#aaa;min-height:60px}
+.bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-shrink:0}.hint{font-size:10px;color:var(--muted);line-height:1.5}
+.overlay{position:absolute;inset:0;background:#09090df0;display:flex;align-items:center;justify-content:center;padding:20px;z-index:10;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.modal{width:min(440px,100%);background:#131319;border:1px solid #353541;border-radius:18px;padding:24px;text-align:center;box-shadow:0 20px 80px #000b}
+.modal .eyebrow{font-size:10px;letter-spacing:.24em;color:var(--purple2);font-weight:800}
+.modal h1{font-size:clamp(36px,8vw,60px);letter-spacing:.25em;margin:8px 0 4px}
+.modal p{color:#aaa;font-size:13px;line-height:1.65}
+.modal .actions{display:flex;gap:8px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+
+/* Touch Controls (Mobile & iPad / Tablet) */
+#touch{display:none;position:absolute;inset:0;pointer-events:none;z-index:3}
+.joy{
+  position:absolute;left:18px;bottom:18px;width:124px;height:124px;border-radius:50%;
+  border:1.5px solid #9565ff55;background:#14141ca8;pointer-events:auto;touch-action:none;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.knob{
+  position:absolute;width:46px;height:46px;border-radius:50%;
+  background:#9565ffcc;border:1.5px solid #d4c2ff;left:38px;top:38px;
+  box-shadow:0 4px 16px #0008;pointer-events:none;
+}
+.touch-actions{
+  position:absolute;right:18px;bottom:18px;display:grid;
+  grid-template-columns:repeat(2,64px);gap:10px;pointer-events:auto;
+}
+.touch-actions button{
+  height:60px;padding:4px;background:#16161ec8;border:1.5px solid #8c70c7;
+  border-radius:14px;font-size:11px;font-weight:800;touch-action:none;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.touch-actions button em{display:block;color:var(--purple2);font-style:normal;font-size:9px;margin-top:2px;font-weight:600}
+.touch-actions button.cd{opacity:.45;border-color:#444}
+
+/* Touch devices (phones & iPads) */
+@media (pointer:coarse), (max-width:1024px){
+  #touch{display:block}
+  .bottom{display:none}
+}
+
+/* Tablet / iPad layout */
+@media (max-width:1024px) and (min-width:761px){
+  main{grid-template-columns:minmax(0,1fr) 220px}
+  .joy{width:136px;height:136px;left:22px;bottom:22px}
+  .knob{width:50px;height:50px;left:42px;top:42px}
+  .touch-actions{grid-template-columns:repeat(2,70px);gap:12px;right:22px;bottom:22px}
+  .touch-actions button{height:66px;font-size:12px}
+}
+
+/* Smartphone Portrait */
+@media (max-width:760px){
+  #app{padding:calc(6px + var(--sat)) calc(8px + var(--sar)) calc(6px + var(--sab)) calc(8px + var(--sal));gap:6px}
+  header{height:28px}.meta{font-size:8px}
+  main{display:flex;flex-direction:column;gap:6px}
+  .stage{flex:1;min-height:220px}
+  .sidebar{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0}
+  .card{padding:8px}.card h3{margin-bottom:4px;font-size:9px}
+  .stats-card .statrow{font-size:10px;margin:3px 0}
+  #skills{gap:4px}.skill{padding:5px 6px;font-size:10px}
+  .log-card{grid-column:1 / -1;min-height:0!important;padding:6px 10px}
+  .log-card h3{display:none}
+  #log{min-height:0;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .joy{width:110px;height:110px;left:12px;bottom:12px}
+  .knob{width:40px;height:40px;left:34px;top:34px}
+  .touch-actions{grid-template-columns:repeat(2,56px);gap:7px;right:12px;bottom:12px}
+  .touch-actions button{height:52px;font-size:10px}
+}
+
+/* Smartphone Landscape */
+@media (max-height:520px) and (pointer:coarse){
+  header{display:none}
+  main{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:6px}
+  .sidebar{display:flex;flex-direction:column;gap:6px}
+  .log-card{display:none}
+  .card{padding:7px}
+  .joy{width:104px;height:104px;left:12px;bottom:12px}
+  .knob{width:38px;height:38px;left:32px;top:32px}
+  .touch-actions{grid-template-columns:repeat(2,54px);gap:6px;right:12px;bottom:12px}
+  .touch-actions button{height:50px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+<header><div class="logo">V<span>O</span>ID</div><div class="meta">DUNGEON DUEL 3D &nbsp;/&nbsp; GEOMETRIC EDITION</div></header>
+<main>
+<section class="stage" id="stage">
+<canvas id="game"></canvas>
+<div class="hud">
+  <div class="hudgroup"><div class="chip">FLOOR <b id="floor">01</b></div><div class="chip">ROOM <b id="room">01</b></div></div>
+  <div class="hudgroup"><div class="chip">YOU <b id="youTime">00:00</b></div><div class="chip">CPU <b id="cpuTime">--:--</b></div></div>
+</div>
+<div id="touch">
+  <div class="joy" id="joy"><div class="knob" id="knob"></div></div>
+  <div class="touch-actions">
+    <button data-act="attack" id="tAttack">ATK<em>通常攻撃</em></button>
+    <button data-act="dash" id="tDash">DASH<em>回避</em></button>
+    <button data-act="shock" id="tShock">Q<em>衝撃波</em></button>
+    <button data-act="blink" id="tBlink">E<em>瞬間移動</em></button>
+  </div>
+</div>
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="eyebrow">3D GEOMETRIC ACTION ROGUELIKE</div>
+    <h1>VOID</h1>
+    <div class="eyebrow">ENTER THE UNKNOWN.</div>
+    <p>立方体・直方体・円柱・錐体で構成された3D迷宮を攻略し、最深部のボスを倒せ。CPUとクリアタイムを競う。</p>
+    <div class="actions"><button class="primary" id="start">START RUN</button><button id="how">HOW TO PLAY</button></div>
+    <p id="modalNote" style="font-size:10px;margin-bottom:0">PC: WASD / 矢印・Space・クリック ｜ スマホ・iPad: 左スティック・右ボタン</p>
+  </div>
+</div>
+</section>
+<aside class="sidebar">
+  <div class="card stats-card">
+    <h3>PLAYER STATUS</h3>
+    <div class="statrow"><span>HP</span><strong id="hpText">100 / 100</strong></div><div class="bar"><i id="hpBar"></i></div>
+    <div class="statrow"><span>LEVEL</span><strong id="level">01</strong></div>
+    <div class="statrow"><span>SHARDS</span><strong id="shards">0</strong></div>
+    <div class="statrow"><span>ENEMIES</span><strong id="enemyCount">0</strong></div>
+  </div>
+  <div class="card">
+    <h3>ABILITIES</h3>
+    <div id="skills">
+      <button class="skill" id="attackBtn"><b>ATK / CLICK</b>通常攻撃<small>近距離攻撃</small></button>
+      <button class="skill" id="dashBtn"><b>SPACE</b>ダッシュ<small>CD 1.2 sec</small></button>
+      <button class="skill" id="shockBtn"><b>Q</b>衝撃波<small>CD 5 sec</small></button>
+      <button class="skill" id="blinkBtn"><b>E</b>ブリンク<small>CD 7 sec</small></button>
+    </div>
+  </div>
+  <div class="card log-card" style="flex:1;min-height:80px">
+    <h3>FIELD LOG</h3><div id="log">迷宮の入口を検出。RUNを開始してください。</div>
+  </div>
+</aside>
+</main>
+<div class="bottom"><div class="hint">WASD / ARROWS 移動 · CLICK 攻撃 · SPACE 回避 · Q 衝撃波 · E ブリンク</div><div class="hint">VOID SYSTEMS <span style="color:var(--purple)">●</span> SOLID 3D GEOMETRY</div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{
+const stage = document.getElementById('stage');
+const canvas = document.getElementById('game');
+const $ = id => document.getElementById(id);
+
+// Game state
+let run = false, ended = false, last = 0, startAt = 0, elapsed = 0;
+let seed = 0, floor = 1, roomNo = 1, level = 1, shards = 0, hp = 100, maxHp = 100;
+let map = [], rooms = [];
+let player = { x: 0, z: 0, r: 0.34, dx: 1, dz: 0, inv: 0, yaw: 0 };
+let enemies = [], loot = [], effects = [];
+let exitPos = { x: 0, z: 0 };
+let bossDefeated = false;
+let keys = {}, cool = { attack: 0, dash: 0, shock: 0, blink: 0 };
+let cpu = { progress: 0, time: 0, done: false };
+let camShake = 0;
+
+// Grid constants (1 unit = 1 tile)
+const COLS = 29, ROWS = 21;
+const WALL_H = 1.45;
+
+// --- THREE.JS SETUP ---
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x0b0b0f, 1);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0b0b0f, 14, 30);
+
+const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 80);
+
+// Clean directional + hemisphere lighting for crisp geometric shading
+const hemiLight = new THREE.HemisphereLight(0xd8d2f0, 0x181822, 0.65);
+scene.add(hemiLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+dirLight.position.set(10, 22, 12);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 1024;
+dirLight.shadow.mapSize.height = 1024;
+dirLight.shadow.camera.near = 2;
+dirLight.shadow.camera.far = 55;
+const dCam = 18;
+dirLight.shadow.camera.left = -dCam;
+dirLight.shadow.camera.right = dCam;
+dirLight.shadow.camera.top = dCam;
+dirLight.shadow.camera.bottom = -dCam;
+dirLight.shadow.bias = -0.001;
+scene.add(dirLight);
+scene.add(dirLight.target);
+
+const playerLight = new THREE.PointLight(0x9565ff, 1.1, 7.5);
+scene.add(playerLight);
+
+// Groups for dynamic cleanup
+const levelGroup = new THREE.Group();
+const entityGroup = new THREE.Group();
+const fxGroup = new THREE.Group();
+scene.add(levelGroup, entityGroup, fxGroup);
+
+// Shared minimal geometric materials (no textures, pure solid shading)
+const matFloorA = new THREE.MeshStandardMaterial({ color: 0x191922, roughness: 0.85, metalness: 0.1 });
+const matFloorB = new THREE.MeshStandardMaterial({ color: 0x14141c, roughness: 0.85, metalness: 0.1 });
+const matWall   = new THREE.MeshStandardMaterial({ color: 0x2a2a36, roughness: 0.7,  metalness: 0.15 });
+const matWallTop= new THREE.MeshStandardMaterial({ color: 0x383848, roughness: 0.6,  metalness: 0.2 });
+const matPlayer = new THREE.MeshStandardMaterial({ color: 0xa987ff, roughness: 0.35, metalness: 0.2 });
+const matPlayerCore = new THREE.MeshStandardMaterial({ color: 0xf4f3f7, roughness: 0.2, metalness: 0.3 });
+const matHit    = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.6 });
+const matEnemy  = new THREE.MeshStandardMaterial({ color: 0xd8d5df, roughness: 0.45, metalness: 0.15 });
+const matBoss   = new THREE.MeshStandardMaterial({ color: 0x9565ff, roughness: 0.35, metalness: 0.25 });
+const matBossAccent = new THREE.MeshStandardMaterial({ color: 0x221b33, roughness: 0.4, metalness: 0.4 });
+const matShard  = new THREE.MeshStandardMaterial({ color: 0xb69aff, emissive: 0x5c36b5, emissiveIntensity: 0.4, roughness: 0.2 });
+const matExitOff= new THREE.MeshStandardMaterial({ color: 0x3b3647, roughness: 0.6 });
+const matExitOn = new THREE.MeshStandardMaterial({ color: 0x9565ff, emissive: 0x6f3fe0, emissiveIntensity: 0.6, roughness: 0.25 });
+
+// Primitive Geometries ONLY (Cube/Box, Cylinder, Cone)
+const geoTile     = new THREE.BoxGeometry(1, 0.2, 1);
+const geoWallBox  = new THREE.BoxGeometry(1, WALL_H, 1);
+const geoWallCap  = new THREE.BoxGeometry(1.01, 0.08, 1.01);
+
+// Player: Cylinder base + Cone body + Cone pointer
+const playerMesh = new THREE.Group();
+const pBase = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.14, 24), matPlayerCore);
+pBase.position.y = 0.07;
+pBase.castShadow = true;
+const pBody = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.68, 24), matPlayer);
+pBody.position.y = 0.48;
+pBody.castShadow = true;
+const pDir = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.28, 16), matPlayerCore);
+pDir.rotation.x = Math.PI / 2;
+pDir.position.set(0, 0.32, 0.32);
+playerMesh.add(pBase, pBody, pDir);
+scene.add(playerMesh);
+
+let exitBaseMesh, exitPillarMesh;
+
+function resize() {
+  const r = stage.getBoundingClientRect();
+  const w = Math.max(280, r.width);
+  const h = Math.max(200, r.height);
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+// Seeded RNG
+function rngFactory(s) {
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+let rand = Math.random;
+function randInt(a, b) { return Math.floor(rand() * (b - a + 1)) + a; }
+function log(s) { $('log').textContent = s; }
+
+function clearGroup(g) {
+  while (g.children.length > 0) {
+    const obj = g.children[0];
+    g.remove(obj);
+  }
+}
+
+// --- DUNGEON GENERATION & 3D BUILD ---
+function generate() {
+  rand = rngFactory(seed + floor * 7919);
+  // 1 = solid wall, 0 = walkable floor
+  map = Array.from({ length: ROWS }, () => Array(COLS).fill(1));
+  rooms = [];
+
+  for (let i = 0; i < 14; i++) {
+    const w = randInt(4, 7), h = randInt(4, 6);
+    const x = randInt(2, COLS - w - 2), y = randInt(2, ROWS - h - 2);
+    if (rooms.some(r => x < r.x + r.w + 1 && x + w + 1 > r.x && y < r.y + r.h + 1 && y + h + 1 > r.y)) continue;
+    const room = { x, y, w, h, cx: Math.floor(x + w / 2), cy: Math.floor(y + h / 2) };
+    rooms.push(room);
+    for (let yy = y; yy < y + h; yy++) {
+      for (let xx = x; xx < x + w; xx++) map[yy][xx] = 0;
+    }
+    if (rooms.length > 1) {
+      const p = rooms[rooms.length - 2], cx = room.cx, cy = room.cy;
+      if (rand() < 0.5) {
+        for (let xx = Math.min(p.cx, cx); xx <= Math.max(p.cx, cx); xx++) map[p.cy][xx] = 0;
+        for (let yy = Math.min(p.cy, cy); yy <= Math.max(p.cy, cy); yy++) map[yy][cx] = 0;
+      } else {
+        for (let yy = Math.min(p.cy, cy); yy <= Math.max(p.cy, cy); yy++) map[yy][p.cx] = 0;
+        for (let xx = Math.min(p.cx, cx); xx <= Math.max(p.cx, cx); xx++) map[cy][xx] = 0;
+      }
+    }
+  }
+
+  if (rooms.length < 2) {
+    rooms = [
+      { x: 2, y: 2, w: 6, h: 5, cx: 4, cy: 4 },
+      { x: 19, y: 12, w: 6, h: 5, cx: 22, cy: 14 }
+    ];
+    for (const r of rooms) {
+      for (let y = r.y; y < r.y + r.h; y++)
+        for (let x = r.x; x < r.x + r.w; x++) map[y][x] = 0;
+    }
+    for (let x = 4; x <= 22; x++) map[4][x] = 0;
+    for (let y = 4; y <= 14; y++) map[y][22] = 0;
+  }
+
+  // Ensure outer border is always solid walls
+  for (let x = 0; x < COLS; x++) { map[0][x] = 1; map[ROWS - 1][x] = 1; }
+  for (let y = 0; y < ROWS; y++) { map[y][0] = 1; map[y][COLS - 1] = 1; }
+
+  // Rebuild 3D Stage using ONLY Box/Cube, Cylinder, Cone
+  clearGroup(levelGroup);
+  clearGroup(entityGroup);
+  clearGroup(fxGroup);
+
+  for (let z = 0; z < ROWS; z++) {
+    for (let x = 0; x < COLS; x++) {
+      if (map[z][x] === 0) {
+        // Floor tile (Box)
+        const tile = new THREE.Mesh(geoTile, (x + z) % 2 === 0 ? matFloorA : matFloorB);
+        tile.position.set(x + 0.5, -0.1, z + 0.5);
+        tile.receiveShadow = true;
+        levelGroup.add(tile);
+      } else {
+        // Build walls around walkable areas AND fill solid outer boundary so nothing looks like void outside
+        let nearFloor = false;
+        for (let dz = -2; dz <= 2; dz++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            if (map[z + dz]?.[x + dx] === 0) nearFloor = true;
+          }
+        }
+        if (nearFloor) {
+          const wall = new THREE.Mesh(geoWallBox, matWall);
+          wall.position.set(x + 0.5, WALL_H / 2, z + 0.5);
+          wall.castShadow = true;
+          wall.receiveShadow = true;
+          levelGroup.add(wall);
+
+          const cap = new THREE.Mesh(geoWallCap, matWallTop);
+          cap.position.set(x + 0.5, WALL_H + 0.04, z + 0.5);
+          cap.receiveShadow = true;
+          levelGroup.add(cap);
+        }
+      }
+    }
+  }
+
+  // Player & Exit positions (tile centers: x + 0.5, z + 0.5)
+  const startRoom = rooms[0];
+  const bossRoom = rooms[rooms.length - 1];
+  player = {
+    x: startRoom.cx + 0.5,
+    z: startRoom.cy + 0.5,
+    r: 0.34,
+    dx: 1,
+    dz: 0,
+    inv: 0,
+    yaw: Math.PI / 2
+  };
+  exitPos = { x: bossRoom.cx + 0.5, z: bossRoom.cy + 0.5 };
+
+  // Exit Portal (Cylinder base + inverted Cone beacon)
+  exitBaseMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.52, 0.12, 24), matExitOff);
+  exitBaseMesh.position.set(exitPos.x, 0.06, exitPos.z);
+  exitBaseMesh.receiveShadow = true;
+  exitPillarMesh = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.65, 20), matExitOff);
+  exitPillarMesh.rotation.x = Math.PI;
+  exitPillarMesh.position.set(exitPos.x, 0.65, exitPos.z);
+  entityGroup.add(exitBaseMesh, exitPillarMesh);
+
+  // Enemies (Cube/Box enemies & multi-primitive Boss)
+  enemies = [];
+  const geoEnemyBox = new THREE.BoxGeometry(0.52, 0.52, 0.52);
+  const geoEnemyHat = new THREE.ConeGeometry(0.24, 0.28, 4);
+  const geoBossBody = new THREE.CylinderGeometry(0.45, 0.55, 0.85, 8);
+  const geoBossCrown= new THREE.ConeGeometry(0.48, 0.45, 8);
+
+  for (let i = 1; i < rooms.length; i++) {
+    const r = rooms[i];
+    const isBoss = (i === rooms.length - 1);
+    const count = isBoss ? 1 : randInt(1, 3);
+    for (let n = 0; n < count; n++) {
+      let ex = randInt(r.x + 1, r.x + r.w - 2) + 0.5;
+      let ez = randInt(r.y + 1, r.y + r.h - 2) + 0.5;
+      if (isBoss) {
+        // Offset boss slightly from exit so they don't overlap completely
+        ex = Math.min(r.x + r.w - 1.5, Math.max(r.x + 1.5, exitPos.x + 1.2));
+      }
+      const group = new THREE.Group();
+      let mainMesh;
+      if (isBoss) {
+        mainMesh = new THREE.Mesh(geoBossBody, matBoss);
+        mainMesh.position.y = 0.425;
+        mainMesh.castShadow = true;
+        const crown = new THREE.Mesh(geoBossCrown, matBossAccent);
+        crown.position.y = 1.07;
+        crown.castShadow = true;
+        group.add(mainMesh, crown);
+      } else {
+        mainMesh = new THREE.Mesh(geoEnemyBox, matEnemy);
+        mainMesh.position.y = 0.28;
+        mainMesh.castShadow = true;
+        const topCone = new THREE.Mesh(geoEnemyHat, matBossAccent);
+        topCone.position.y = 0.68;
+        group.add(mainMesh, topCone);
+      }
+      group.position.set(ex, 0, ez);
+      entityGroup.add(group);
+
+      enemies.push({
+        x: ex,
+        z: ez,
+        hp: isBoss ? 80 : 30,
+        max: isBoss ? 80 : 30,
+        r: isBoss ? 0.52 : 0.32,
+        speed: isBoss ? 1.45 : 1.15,
+        boss: isBoss,
+        hit: 0,
+        attack: rand() * 1.5,
+        mesh: group,
+        mainMesh
+      });
+    }
+  }
+
+  // Loot Shards (Two opposed Cones forming a geometric octahedron crystal)
+  loot = [];
+  const geoCrystalHalf = new THREE.ConeGeometry(0.18, 0.26, 4);
+  for (let i = 1; i < rooms.length - 1; i++) {
+    if (rand() < 0.75) {
+      const r = rooms[i];
+      const lx = r.cx + 0.5, lz = r.cy + 0.5;
+      const g = new THREE.Group();
+      const cTop = new THREE.Mesh(geoCrystalHalf, matShard);
+      cTop.position.y = 0.13;
+      const cBot = new THREE.Mesh(geoCrystalHalf, matShard);
+      cBot.rotation.x = Math.PI;
+      cBot.position.y = -0.13;
+      g.add(cTop, cBot);
+      g.position.set(lx, 0.42, lz);
+      entityGroup.add(g);
+      loot.push({ x: lx, z: lz, taken: false, mesh: g });
+    }
+  }
+
+  roomNo = 1;
+  updatePlayerTransform();
+  updateHUD();
+  log('新しい3D迷宮を生成。最深部のボスを撃破せよ。');
+}
+
+// --- STRICT CIRCLE-VS-AABB COLLISION (Prevents clipping into or outside walls) ---
+function isWallTile(tx, tz) {
+  if (tx < 0 || tx >= COLS || tz < 0 || tz >= ROWS) return true;
+  return map[tz][tx] !== 0;
+}
+
+function resolveWallCollision(ent) {
+  const r = ent.r;
+  // Clamp strictly inside outer grid bounds
+  ent.x = Math.max(1 + r, Math.min(COLS - 1 - r, ent.x));
+  ent.z = Math.max(1 + r, Math.min(ROWS - 1 - r, ent.z));
+
+  const minTx = Math.floor(ent.x - r);
+  const maxTx = Math.floor(ent.x + r);
+  const minTz = Math.floor(ent.z - r);
+  const maxTz = Math.floor(ent.z + r);
+
+  for (let tz = minTz; tz <= maxTz; tz++) {
+    for (let tx = minTx; tx <= maxTx; tx++) {
+      if (isWallTile(tx, tz)) {
+        // Closest point on wall tile AABB [tx, tx+1] x [tz, tz+1]
+        const closestX = Math.max(tx, Math.min(ent.x, tx + 1));
+        const closestZ = Math.max(tz, Math.min(ent.z, tz + 1));
+        const dx = ent.x - closestX;
+        const dz = ent.z - closestZ;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq < r * r) {
+          const dist = Math.sqrt(distSq);
+          if (dist > 0.0001) {
+            const overlap = r - dist;
+            ent.x += (dx / dist) * overlap;
+            ent.z += (dz / dist) * overlap;
+          } else {
+            // Fallback push out if center somehow entered tile
+            const cX = tx + 0.5, cZ = tz + 0.5;
+            const pdx = ent.x - cX, pdz = ent.z - cZ;
+            if (Math.abs(pdx) > Math.abs(pdz)) {
+              ent.x = pdx > 0 ? tx + 1 + r : tx - r;
+            } else {
+              ent.z = pdz > 0 ? tz + 1 + r : tz - r;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+function moveEntity(ent, vx, vz) {
+  // Sub-step movement so high speeds (like dash) never tunnel through walls
+  const dist = Math.hypot(vx, vz);
+  const steps = Math.max(1, Math.ceil(dist / 0.15));
+  const sx = vx / steps;
+  const sz = vz / steps;
+  for (let i = 0; i < steps; i++) {
+    ent.x += sx;
+    resolveWallCollision(ent);
+    ent.z += sz;
+    resolveWallCollision(ent);
+  }
+}
+
+// --- GEOMETRIC EFFECTS (Cubes, Cylinders, Cones only) ---
+const geoCubeFx = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+function spawnBurst(x, z, colorHex, count = 8) {
+  const mat = new THREE.MeshBasicMaterial({ color: colorHex });
+  for (let i = 0; i < count; i++) {
+    const m = new THREE.Mesh(geoCubeFx, mat);
+    m.position.set(x, 0.35, z);
+    fxGroup.add(m);
+    const a = Math.random() * Math.PI * 2;
+    const spd = 1.2 + Math.random() * 2.8;
+    effects.push({
+      mesh: m,
+      vx: Math.cos(a) * spd,
+      vy: 1.5 + Math.random() * 2.2,
+      vz: Math.sin(a) * spd,
+      life: 0.35 + Math.random() * 0.25,
+      maxLife: 0.6,
+      type: 'particle'
+    });
+  }
+}
+
+function spawnCylinderWave(x, z, maxR, colorHex, duration = 0.28) {
+  const geo = new THREE.CylinderGeometry(1, 1, 0.08, 24);
+  const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.65 });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, 0.06, z);
+  m.scale.set(0.1, 1, 0.1);
+  fxGroup.add(m);
+  effects.push({
+    mesh: m,
+    maxR,
+    life: duration,
+    maxLife: duration,
+    type: 'wave'
+  });
+}
+
+// --- ABILITIES ---
+function attack() {
+  if (!run || cool.attack > 0) return;
+  cool.attack = 0.34;
+  spawnCylinderWave(player.x + player.dx * 0.4, player.z + player.dz * 0.4, 1.35, 0xb69aff, 0.18);
+  let hit = 0;
+  for (const e of enemies) {
+    const d = Math.hypot(e.x - player.x, e.z - player.z);
+    if (d < 1.55 + e.r) {
+      e.hp -= 25;
+      e.hit = 0.15;
+      spawnBurst(e.x, e.z, 0xb69aff, 6);
+      hit++;
+    }
+  }
+  if (hit) {
+    camShake = 0.08;
+    log('斬撃命中。敵にダメージ。');
+  }
+}
+
+function dash() {
+  if (!run || cool.dash > 0) return;
+  cool.dash = 1.2;
+  player.inv = 0.28;
+  const dx = player.dx || 1, dz = player.dz || 0;
+  moveEntity(player, dx * 2.1, dz * 2.1);
+  spawnBurst(player.x, player.z, 0x9565ff, 10);
+}
+
+function shock() {
+  if (!run || cool.shock > 0) return;
+  cool.shock = 5.0;
+  spawnCylinderWave(player.x, player.z, 3.6, 0x9565ff, 0.35);
+  spawnBurst(player.x, player.z, 0xb69aff, 18);
+  camShake = 0.16;
+  for (const e of enemies) {
+    if (Math.hypot(e.x - player.x, e.z - player.z) < 3.6 + e.r) {
+      e.hp -= 38;
+      e.hit = 0.2;
+      spawnBurst(e.x, e.z, 0xffffff, 8);
+    }
+  }
+  log('SHOCKWAVE 発動。周囲の敵に衝撃波！');
+}
+
+function blink() {
+  if (!run || cool.blink > 0) return;
+  cool.blink = 7.0;
+  const dx = player.dx || 1, dz = player.dz || 0;
+  spawnBurst(player.x, player.z, 0x9565ff, 10);
+  // Step tile-by-tile so blink stops cleanly at walls and never leaves the stage
+  const stepDist = 0.2;
+  const maxSteps = 22; // up to 4.4 tiles
+  for (let i = 0; i < maxSteps; i++) {
+    const nx = player.x + dx * stepDist;
+    const nz = player.z + dz * stepDist;
+    const tx = Math.floor(nx), tz = Math.floor(nz);
+    if (isWallTile(tx, tz)) break;
+    player.x = nx;
+    player.z = nz;
+    resolveWallCollision(player);
+  }
+  player.inv = 0.25;
+  spawnBurst(player.x, player.z, 0xd4c2ff, 12);
+}
+
+// --- UPDATE & RENDER LOOP ---
+function updatePlayerTransform() {
+  playerMesh.position.set(player.x, 0, player.z);
+  playerMesh.rotation.y = player.yaw;
+  playerLight.position.set(player.x, 1.4, player.z);
+  dirLight.position.set(player.x + 8, 20, player.z + 10);
+  dirLight.target.position.set(player.x, 0, player.z);
+  dirLight.target.updateMatrixWorld();
+}
+
+function update(dt) {
+  elapsed = (performance.now() - startAt) / 1000;
+  for (const k in cool) cool[k] = Math.max(0, cool[k] - dt);
+  player.inv = Math.max(0, player.inv - dt);
+  camShake = Math.max(0, camShake - dt);
+
+  // Movement input (Keyboard + Touch Joystick)
+  let ix = (keys.d || keys.ArrowRight ? 1 : 0) - (keys.a || keys.ArrowLeft ? 1 : 0);
+  let iz = (keys.s || keys.ArrowDown ? 1 : 0) - (keys.w || keys.ArrowUp ? 1 : 0);
+  if (touchVec.x || touchVec.y) {
+    ix = touchVec.x;
+    iz = touchVec.y;
+  }
+
+  const len = Math.hypot(ix, iz);
+  if (len > 0.01) {
+    const nx = ix / len;
+    const nz = iz / len;
+    player.dx = nx;
+    player.dz = nz;
+    player.yaw = Math.atan2(nx, nz);
+    const speed = 4.6 * Math.min(1, len);
+    moveEntity(player, nx * speed * dt, nz * speed * dt);
+  }
+
+  // Player blink material when invincible
+  pBody.material = player.inv > 0 ? matHit : matPlayer;
+
+  // Determine current room number
+  for (let i = 0; i < rooms.length; i++) {
+    const r = rooms[i];
+    if (player.x >= r.x && player.x <= r.x + r.w && player.z >= r.y && player.z <= r.y + r.h) {
+      roomNo = i + 1;
+      break;
+    }
+  }
+
+  // Update Enemies
+  for (const e of enemies) {
+    e.attack -= dt;
+    e.hit = Math.max(0, e.hit - dt);
+    e.mainMesh.material = e.hit > 0 ? matHit : (e.boss ? matBoss : matEnemy);
+
+    const vx = player.x - e.x;
+    const vz = player.z - e.z;
+    const d = Math.hypot(vx, vz);
+
+    if (d < 6.5 && d > 0.1) {
+      moveEntity(e, (vx / d) * e.speed * dt, (vz / d) * e.speed * dt);
+      e.mesh.rotation.y = Math.atan2(vx, vz);
+    } else {
+      e.mesh.rotation.y += dt * (e.boss ? 0.8 : 1.2);
+    }
+
+    e.mesh.position.set(e.x, 0, e.z);
+
+    if (d < e.r + player.r + 0.12 && e.attack <= 0 && player.inv <= 0) {
+      hp -= e.boss ? 14 : 8;
+      e.attack = e.boss ? 0.85 : 1.1;
+      player.inv = 0.35;
+      camShake = 0.14;
+      spawnBurst(player.x, player.z, 0xffffff, 7);
+      log('被弾！距離を取って回避しよう。');
+    }
+  }
+
+  // Filter defeated enemies
+  enemies = enemies.filter(e => {
+    if (e.hp <= 0) {
+      shards += e.boss ? 5 : 1;
+      spawnBurst(e.x, e.z, 0x9565ff, e.boss ? 22 : 10);
+      entityGroup.remove(e.mesh);
+      if (e.boss) {
+        bossDefeated = true;
+        exitBaseMesh.material = matExitOn;
+        exitPillarMesh.material = matExitOn;
+        log('BOSS DOWN. 出口が起動した！');
+      }
+      return false;
+    }
+    return true;
+  });
+
+  // Update Loot Shards
+  const nowSec = performance.now() * 0.002;
+  for (const l of loot) {
+    if (!l.taken) {
+      l.mesh.rotation.y = nowSec;
+      l.mesh.position.y = 0.42 + Math.sin(nowSec * 2 + l.x) * 0.06;
+      if (Math.hypot(l.x - player.x, l.z - player.z) < 0.75) {
+        l.taken = true;
+        entityGroup.remove(l.mesh);
+        shards += 3;
+        hp = Math.min(maxHp, hp + 12);
+        spawnBurst(l.x, l.z, 0xb69aff, 8);
+        log('SHARD獲得。HPを12回復。');
+      }
+    }
+  }
+
+  // Animate Exit Beacon
+  if (exitPillarMesh) {
+    exitPillarMesh.rotation.y = nowSec * 1.5;
+    exitPillarMesh.position.y = (bossDefeated ? 0.75 : 0.62) + Math.sin(nowSec * 3) * 0.06;
+  }
+
+  // Win / Lose checks
+  if (hp <= 0) {
+    hp = 0;
+    finish(false);
+  }
+  if (bossDefeated && Math.hypot(exitPos.x - player.x, exitPos.z - player.z) < 0.85) {
+    finish(true);
+  }
+
+  // CPU rival simulation
+  if (!cpu.done) {
+    cpu.progress = Math.min(1, cpu.progress + dt / (85 + ((seed % 17) - 8) * 1.1));
+    if (cpu.progress >= 1) {
+      cpu.done = true;
+      cpu.time = elapsed + Math.max(0, Math.random() * 2);
+    }
+  }
+
+  // Update Geometric FX
+  effects = effects.filter(fx => {
+    fx.life -= dt;
+    if (fx.life <= 0) {
+      fxGroup.remove(fx.mesh);
+      return false;
+    }
+    const t = 1 - fx.life / fx.maxLife;
+    if (fx.type === 'particle') {
+      fx.mesh.position.x += fx.vx * dt;
+      fx.mesh.position.y = Math.max(0.06, fx.mesh.position.y + fx.vy * dt);
+      fx.mesh.position.z += fx.vz * dt;
+      fx.vy -= 9.8 * dt;
+      fx.mesh.scale.setScalar(1 - t * 0.8);
+    } else if (fx.type === 'wave') {
+      const r = 0.1 + fx.maxR * t;
+      fx.mesh.scale.set(r, 1, r);
+      fx.mesh.material.opacity = 0.65 * (1 - t);
+    }
+    return true;
+  });
+
+  updatePlayerTransform();
+  updateHUD();
+}
+
+function updateCamera(dt) {
+  // Smooth isometric-style angled 3D follow camera (shows walls & floor clearly, never cuts outside)
+  const targetX = player.x;
+  const targetZ = player.z;
+  const offsetZ = 7.4;
+  const heightY = 9.2;
+
+  const shakeX = camShake > 0 ? (Math.random() - 0.5) * 0.35 : 0;
+  const shakeZ = camShake > 0 ? (Math.random() - 0.5) * 0.35 : 0;
+
+  camera.position.x += (targetX + shakeX - camera.position.x) * Math.min(1, dt * 10);
+  camera.position.y += (heightY - camera.position.y) * Math.min(1, dt * 10);
+  camera.position.z += (targetZ + offsetZ + shakeZ - camera.position.z) * Math.min(1, dt * 10);
+  camera.lookAt(targetX, 0.2, targetZ - 0.4);
+}
+
+function finish(win) {
+  if (ended) return;
+  ended = true;
+  run = false;
+  const you = elapsed;
+  const cpuT = cpu.time || 92;
+  const won = win && (!cpu.done || you < cpuT);
+  $('overlay').style.display = 'flex';
+  $('overlay').innerHTML = `
+    <div class="modal">
+      <div class="eyebrow">RUN COMPLETE</div>
+      <h1 style="font-size:40px;letter-spacing:.16em;color:${won ? '#b69aff' : '#eee'}">${win ? (won ? 'VICTORY' : 'CLEAR') : 'DEFEAT'}</h1>
+      <p>${win ? 'ボスを撃破し、3Dダンジョンから脱出した。' : '探索はここで終了。次のランでリベンジしよう。'}</p>
+      <div style="display:flex;justify-content:space-around;margin:18px 0">
+        <div><div class="eyebrow">YOUR TIME</div><strong>${fmt(you)}</strong></div>
+        <div><div class="eyebrow">CPU STATUS</div><strong>${cpu.done ? fmt(cpuT) : 'RUNNING'}</strong></div>
+      </div>
+      <div class="actions"><button class="primary" id="again">RUN AGAIN</button></div>
+    </div>`;
+  $('again').onclick = () => newRun();
+}
+
+function fmt(t) {
+  return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(Math.floor(t % 60)).padStart(2, '0');
+}
+
+function updateHUD() {
+  $('hpText').textContent = `${Math.ceil(hp)} / ${maxHp}`;
+  $('hpBar').style.width = (hp / maxHp * 100) + '%';
+  $('level').textContent = String(level).padStart(2, '0');
+  $('shards').textContent = shards;
+  $('enemyCount').textContent = enemies.length;
+  $('floor').textContent = String(floor).padStart(2, '0');
+  $('room').textContent = String(roomNo).padStart(2, '0');
+  $('youTime').textContent = fmt(elapsed);
+  $('cpuTime').textContent = cpu.done ? fmt(cpu.time) : Math.round(cpu.progress * 100) + '%';
+
+  // Cooldown visual feedback on desktop & touch buttons
+  $('dashBtn').classList.toggle('cd', cool.dash > 0);
+  $('shockBtn').classList.toggle('cd', cool.shock > 0);
+  $('blinkBtn').classList.toggle('cd', cool.blink > 0);
+  $('tDash').classList.toggle('cd', cool.dash > 0);
+  $('tShock').classList.toggle('cd', cool.shock > 0);
+  $('tBlink').classList.toggle('cd', cool.blink > 0);
+}
+
+function frame(t) {
+  const dt = Math.min(0.05, (t - last) / 1000 || 0.016);
+  last = t;
+  if (run) {
+    update(dt);
+  }
+  updateCamera(dt);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+function newRun() {
+  seed = Math.floor(Math.random() * 999999);
+  floor = 1; level = 1; shards = 0; hp = 100;
+  bossDefeated = false; ended = false; elapsed = 0;
+  cool = { attack: 0, dash: 0, shock: 0, blink: 0 };
+  cpu = { progress: 0, time: 0, done: false };
+  generate();
+  camera.position.set(player.x, 9.2, player.z + 7.4);
+  startAt = performance.now();
+  run = true;
+  $('overlay').style.display = 'none';
+}
+
+// Initial preview scene behind title modal
+seed = 42019;
+generate();
+camera.position.set(player.x, 9.2, player.z + 7.4);
+requestAnimationFrame(frame);
+
+// UI & Input Events
+$('start').onclick = newRun;
+$('how').onclick = () => {
+  $('modalNote').textContent = '敵を倒してSHARDを集め、紫の結晶で回復。最深部のボスを倒し、起動した出口へ到達するとクリア。';
+};
+
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
+  if (e.key === ' ') dash();
+  if (e.key.toLowerCase() === 'q') shock();
+  if (e.key.toLowerCase() === 'e') blink();
+  if (e.key === 'Enter' && !run) newRun();
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// Mouse click attack on canvas (ignore touch to prevent double-firing)
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && run) attack();
+});
+
+$('attackBtn').onclick = attack;
+$('dashBtn').onclick = dash;
+$('shockBtn').onclick = shock;
+$('blinkBtn').onclick = blink;
+
+// Multi-touch Action Buttons (iPhone / iPad)
+document.querySelectorAll('[data-act]').forEach(btn => {
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const fn = { attack, dash, shock, blink }[btn.dataset.act];
+    if (fn) fn();
+  });
+});
+
+// Multi-touch Virtual Joystick (works simultaneously with action buttons on iPad/iPhone)
+let touchVec = { x: 0, y: 0 };
+const joy = $('joy'), knob = $('knob');
+let joyId = null;
+
+function joyMove(e) {
+  const r = joy.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  let dx = e.clientX - cx;
+  let dy = e.clientY - cy;
+  const maxR = r.width * 0.34;
+  const m = Math.hypot(dx, dy);
+  if (m > maxR) {
+    dx = (dx / m) * maxR;
+    dy = (dy / m) * maxR;
+  }
+  touchVec = { x: dx / maxR, y: dy / maxR };
+  knob.style.transform = `translate(${dx}px, ${dy}px)`;
+}
+
+function joyEnd(e) {
+  if (e && e.pointerId !== undefined && e.pointerId !== joyId) return;
+  joyId = null;
+  touchVec = { x: 0, y: 0 };
+  knob.style.transform = 'translate(0px, 0px)';
+}
+
+joy.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (joyId !== null) return;
+  joyId = e.pointerId;
+  joy.setPointerCapture(joyId);
+  joyMove(e);
+});
+joy.addEventListener('pointermove', e => {
+  if (e.pointerId === joyId) {
+    e.preventDefault();
+    joyMove(e);
+  }
+});
+joy.addEventListener('pointerup', joyEnd);
+joy.addEventListener('pointercancel', joyEnd);
+})();
+</script>
+</body>
+</html>
